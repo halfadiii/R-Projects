@@ -1,0 +1,116 @@
+```{r}
+library(ISLR2)
+library(ggplot2)
+# install.packages("GGally")
+library(GGally)
+library(gridExtra)
+library(reshape2)
+data(College)
+# head(College)
+
+ggpairs(College) # makes pair plot
+
+ #histogram for Applications feature
+p1<-ggplot(College,aes(x=Apps)) +geom_histogram(bins=30)+ggtitle("Applications")
+ #histogram for Enrollment feature
+p2<-ggplot(College, aes(x=Enroll))+ geom_histogram(bins=30)+ggtitle("Enrollment")
+ #histogram for Graduation Date feature
+p3<-ggplot(College, aes(x=Grad.Rate))+geom_histogram(bins=30)+ ggtitle("Graduation Rate")
+ 
+grid.arrange(p1,p2,p3,ncol=3)
+
+#correlation matrix
+cor_matrix <- cor(College[, sapply(College, is.numeric)])
+#  heatmap
+cor_melt <- melt(cor_matrix)
+ggplot(data=cor_melt, aes(x=Var1, y=Var2, fill=value))+geom_tile(color = "white")+
+    scale_fill_gradient2(low = "blue", high="red", mid = "white", midpoint =0, limit=c(-1,1),
+    space="Lab",name="Pearson\nCorrelation") +theme_minimal() + 
+    theme(axis.text.x = element_text(angle = 45, vjust = 1, size= 12, hjust = 1),
+    axis.text.y=element_text(size = 12)) +labs(x= '',y='', title='Correlation Matrix Heatmap') +
+    coord_fixed()
+```
+
+Scaling or transformation might be necessary for the given data set. If the variables are of different scales and analysis like K-means or PCA is used we will get a wrong output as these algorithm assume the variables to be on the same scale. We should use transformations like square root or log. to normalize the distribution. This won't causxe any errors when using ML algotihms or something else.
+
+```{r}
+library(ggplot2)
+library(GGally)
+library(ISLR2)
+library(gridExtra) 
+data(College)
+
+College$log_Apps<-log(College$Apps +1) #log transformation, add 1 to 0 values
+College$sqrt_Enroll <-sqrt(College$Enroll) # square root
+College$sqrt_Grad_Rate <-sqrt(College$Grad.Rate) #square root
+
+#histogram
+p1<-ggplot(College,aes(x=log_Apps)) +geom_histogram(bins=30)+ ggtitle("Log of Applications") 
+p2<-ggplot(College, aes(x=sqrt_Enroll))+ geom_histogram(bins=30) +ggtitle("Square Root of Enrollment")
+p3 <-ggplot(College, aes(x=sqrt_Grad_Rate)) + geom_histogram(bins=30) +
+  ggtitle("Square Root of Graduation Rate") 
+
+#arrange plot
+grid.arrange(p1, p2,p3,ncol=3)
+
+#pair plot for transformed var.
+selected_cols <-c("log_Apps", "sqrt_Enroll","sqrt_Grad_Rate", "Outstate","Room.Board","PhD")
+ggpairs(College[, selected_cols])
+```
+
+The results after the transformation show that the data distribution have become normal, i.e. reduced skewness. Gives better analysis and clearer insight, for example after the transformation the three variables shown have a more predictable pattern as we are not considering the extreme values anymore.
+
+```{r}
+library(ISLR2)
+data(College)
+
+#total UG students and their median
+College$total_undergrads<- College$F.Undergrad+College$P.Undergrad
+median_size <- median(College$total_undergrads)
+
+#subset data into large and small
+large <-College[College$total_undergrads > median_size,]
+small<-College[College$total_undergrads <=median_size, ]
+
+##sort alphabetically by college name
+large<-large[order(rownames(large)), ]
+small<-small[order(rownames(small)), ]
+
+#save as txt files
+write.table(large,"large_colleges.txt", sep="\t", row.names = TRUE,col.names = NA)
+write.table(small,"small_colleges.txt",sep="\t",row.names = TRUE,col.names = NA)
+```
+
+```{r}
+library(ISLR2)
+
+#loading large and small txt data frames
+large <-read.table("large_colleges.txt",sep="\t",header= TRUE)
+small<-read.table("small_colleges.txt",sep="\t",header= TRUE)
+
+#median of top 25% for large and small df
+median_large_top25=median(large$Top25perc)
+median_small_top25=median(small$Top25perc)
+
+#drop rows for top25perc < median
+filtered_large = large[large$Top25perc >= median_large_top25, ]
+filtered_small = small[small$Top25perc >= median_small_top25, ]
+
+##save
+write.table(filtered_large,"filtered_large_colleges.txt",sep="\t",row.names =TRUE,col.names= NA)
+write.table(filtered_small,"filtered_small_colleges.txt",sep="\t",row.names =TRUE,col.names= NA)
+
+```
+
+```{r}
+filtered_large<-read.table("filtered_large_colleges.txt",sep= "\t",header = TRUE, check.names =FALSE)
+filtered_small<-read.table("filtered_small_colleges.txt",sep= "\t",header = TRUE, check.names =FALSE)
+
+#list containing of datasets
+college_datasets<- list(
+  LargeColleges=filtered_large,
+  SmallColleges=filtered_small
+)
+
+save(college_datasets,file="CollegeDatasets.RData")
+```
