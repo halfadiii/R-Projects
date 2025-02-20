@@ -1,0 +1,48 @@
+```{r}
+library(rpart)
+library(rpart.plot)
+library(dplyr)
+
+load("marketing.RData")
+
+# refewrence sample
+set.seed(123)
+reference_data <- marketing %>%
+  mutate(across(everything(), ~sample(., replace = TRUE)))
+
+#class labels(original=1, reference=0)
+marketing$class <-1
+reference_data$class <-0
+
+# Combine datasets
+combined_data <- bind_rows(marketing, reference_data)
+
+# Build the classification tree with adjusted parameters
+tree_model <-rpart(class ~ .,data = combined_data, method ="class", 
+                    control =rpart.control(cp = 0.001, maxdepth =30))
+rpart.plot(tree_model)
+
+summary_tree <-summary(tree_model)
+summary_frame <-summary_tree$frame
+
+#calculate class 1 probability
+if ("dev" %in% names(summary_frame) && "n" %in% names(summary_frame)) {
+    summary_frame$class_prob_1 <- ifelse(summary_frame$yval == 2,
+                                         1 - (summary_frame$dev / summary_frame$n),
+                                         summary_frame$dev / summary_frame$n)
+} else {
+    stop("Required columns do not exist in summary_frame")
+}
+
+#high probability nodes for class 1
+high_prob_nodes <-summary_frame[summary_frame$class_prob_1 > 0.9,]
+
+if (nrow(high_prob_nodes) >0){
+    print(high_prob_nodes)
+} else {
+    print("No nodes with greater than 90% probability for class 1 are found")
+}
+
+str(summary_frame)
+
+```
